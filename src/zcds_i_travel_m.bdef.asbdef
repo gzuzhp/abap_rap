@@ -2,12 +2,10 @@ managed; // implementation in class zbp_cds_i_travel_m unique;
 
 define behavior for ZCDS_I_TRAVEL_M alias travel
 implementation in class zcl_bp_travel_m unique
-persistent table ztlog_travel_m     // manage guarda create, update, delete
+persistent table ztlog_travel_m     // manage - create, update, delete
 with additional save                // Llena tabla log.
-//lock dependent
-//lock master unmanaged
 lock master
-authorization master ( instance )  //Autorizaciones
+authorization master ( instance )
 etag master last_changed_at  //evita actualizaciones automaticas en protocolo ODAta simultaneas
 {
   // administrative fields: read only
@@ -19,18 +17,18 @@ etag master last_changed_at  //evita actualizaciones automaticas en protocolo OD
 
   mapping for ztlog_travel_m corresponding; //mapeo de CDS a base de datos
 
-  create;
-  update;
-  delete;
-//  delete ( authorization : none );
+  create; //Static Feature Control - manage
+  update; //Static Feature Control - manage
+  delete; //Static Feature Control . manage
+  //  delete ( authorization : none ); // deshabilita autorización sobre la acción estática - manage
 
   //instacne actions
-  action ( features : instance ) acceptTravel result [1] $self; //depende datos instancia con un solo retorno
+  action ( features : instance ) acceptTravel result [1] $self;
   action ( features : instance ) rejectTravel result [1] $self;
 
-  //action ( authorization : none ) createBooking result [1] $self; // revisar
+  //action ( authorization : none ) createBooking result [1] $self; //deshabilita autorización sobre la acción
 
-  action createTravelByTemplate result [1] $self;  //copia viaje
+  action createTravelByTemplate result [1] $self;  //copy Travel
 
   //validations
   validation validateCustomer on save { field customer_id; }
@@ -44,9 +42,9 @@ etag master last_changed_at  //evita actualizaciones automaticas en protocolo OD
 define behavior for ZCDS_I_BOOK_M alias book
 implementation in class zcl_bp_booking_m unique
 persistent table ztlog_booking_m
-lock dependent ( travel_id = travel_id )     //obsoleta
-//lock dependent by _Travel
-// authorization dependent( travel_id = travel_id ) // Autorizacion
+lock dependent ( travel_id = travel_id )
+authorization dependent ( travel_id = travel_id )
+
 etag master last_changed_at
 {
   // static field control
@@ -69,10 +67,8 @@ etag master last_changed_at
 
 define behavior for ZCDS_I_BOOKSUPPL_M alias booksupl
 implementation in class zcl_bp_bookingsupplement_m unique
-//persistent table <???>
 with unmanaged save
 lock dependent ( travel_id = travel_id )
-// authorization dependent( travel_id = travel_id ) // Autorizacion
 etag master last_changed_at
 {
   //static field control

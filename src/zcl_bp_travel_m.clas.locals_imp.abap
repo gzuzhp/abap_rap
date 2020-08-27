@@ -263,24 +263,36 @@ CLASS lhc_travel IMPLEMENTATION.
                                               severity = if_abap_behv_message=>severity-error )
                           %element-overall_status = if_abap_behv=>mk-on ) TO reported.
       ENDCASE.
-
     ENDLOOP.
   ENDMETHOD.
 
   METHOD check_authority_for_entity.
     DATA(lv_syuname) = cl_abap_context_info=>get_user_technical_name( ).
-    LOOP AT lt_entity_key INTO DATA(ls_entity_key).
-      APPEND INITIAL LINE TO result ASSIGNING FIELD-SYMBOL(<ls_result>).
-      <ls_result> = VALUE #( %key = ls_entity_key-%key
+    IF lv_syuname = 'CB0000000025'.
+      LOOP AT lt_entity_key INTO DATA(ls_entity_key).
+        APPEND INITIAL LINE TO result ASSIGNING FIELD-SYMBOL(<ls_result>).
+        <ls_result> = VALUE #( %key = ls_entity_key-%key
 *      %update = if_abap_behv=>auth-allowed
-
-      %op-%update = if_abap_behv=>auth-allowed
-      %delete = if_abap_behv=>auth-allowed
-      %action-createTravelByTemplate = if_abap_behv=>auth-allowed
-      %action-acceptTravel = if_abap_behv=>auth-allowed
-      %action-rejectTravel = if_abap_behv=>auth-allowed
-      %assoc-_Booking = if_abap_behv=>auth-allowed ).
-    ENDLOOP.
+        %op-%update = if_abap_behv=>auth-allowed
+        %delete = if_abap_behv=>auth-allowed
+        %action-createTravelByTemplate = if_abap_behv=>auth-allowed
+        %action-acceptTravel = if_abap_behv=>auth-allowed
+        %action-rejectTravel = if_abap_behv=>auth-allowed
+        %assoc-_Booking = if_abap_behv=>auth-allowed ).
+      ENDLOOP.
+    ELSE.
+      LOOP AT lt_entity_key INTO DATA(ls_entity_e_key).
+        APPEND INITIAL LINE TO result ASSIGNING FIELD-SYMBOL(<ls_result_e>).
+        <ls_result_e> = VALUE #( %key = ls_entity_e_key-%key
+*      %update = if_abap_behv=>auth-unauthorized
+        %op-%update = if_abap_behv=>auth-unauthorized
+        %delete = if_abap_behv=>auth-unauthorized
+        %action-createTravelByTemplate = if_abap_behv=>auth-unauthorized
+        %action-acceptTravel = if_abap_behv=>auth-unauthorized
+        %action-rejectTravel = if_abap_behv=>auth-unauthorized
+        %assoc-_Booking = if_abap_behv=>auth-unauthorized ).
+      ENDLOOP.
+    ENDIF.
   ENDMETHOD.
 
 ENDCLASS.
@@ -292,9 +304,10 @@ ENDCLASS.
 
 CLASS lcl_save IMPLEMENTATION.
   METHOD save_modified.
-    DATA lt_travel_log TYPE STANDARD TABLE OF ztlog_log_travel.
-    DATA lt_travel_log_c TYPE STANDARD TABLE OF ztlog_log_travel.
-    DATA lt_travel_log_u TYPE STANDARD TABLE OF ztlog_log_travel.
+    DATA: lt_travel_log   TYPE STANDARD TABLE OF ztlog_log_travel,
+          lt_travel_log_c TYPE STANDARD TABLE OF ztlog_log_travel,
+          lt_travel_log_u TYPE STANDARD TABLE OF ztlog_log_travel.
+*    DATA(lv_syuname) = cl_abap_context_info=>get_user_technical_name( ).
     " (1) Get instance data of all instances that have been created
     IF create-travel IS NOT INITIAL.
       " Creates internal table with instance data
@@ -316,6 +329,7 @@ CLASS lcl_save IMPLEMENTATION.
             ENDTRY.
             <fs_travel_log_c>-changed_field_name = 'booking_fee'.
             <fs_travel_log_c>-changed_value = ls_travel-booking_fee.
+            <fs_travel_log_c>-user_mod = cl_abap_context_info=>get_user_technical_name( ).
             APPEND <fs_travel_log_c> TO lt_travel_log_c.
           ENDIF.
           " If new value of the overal_status field created
@@ -328,6 +342,7 @@ CLASS lcl_save IMPLEMENTATION.
             ENDTRY.
             <fs_travel_log_c>-changed_field_name = 'overal_status'.
             <fs_travel_log_c>-changed_value = ls_travel-overall_status.
+            <fs_travel_log_c>-user_mod = cl_abap_context_info=>get_user_technical_name( ).
             APPEND <fs_travel_log_c> TO lt_travel_log_c.
           ENDIF.
           " IF ls_travel-%control-...
@@ -353,6 +368,7 @@ CLASS lcl_save IMPLEMENTATION.
               "handle exception
           ENDTRY.
           <fs_travel_db>-changed_field_name = 'customer_id'.
+          <fs_travel_db>-user_mod = cl_abap_context_info=>get_user_technical_name( ).
           APPEND <fs_travel_db> TO lt_travel_log_u.
         ENDIF.
         IF <fs_travel_log_u>-%control-description = if_abap_behv=>mk-on.
@@ -364,6 +380,7 @@ CLASS lcl_save IMPLEMENTATION.
               "handle exception
           ENDTRY.
           <fs_travel_db>-changed_field_name = 'description'.
+          <fs_travel_db>-user_mod = cl_abap_context_info=>get_user_technical_name( ).
           APPEND <fs_travel_db> TO lt_travel_log_u.
         ENDIF.
         "IF <fs_travel_log_u>-%control-...
@@ -376,6 +393,7 @@ CLASS lcl_save IMPLEMENTATION.
       lt_travel_log = CORRESPONDING #( delete-travel ).
       LOOP AT lt_travel_log ASSIGNING FIELD-SYMBOL(<fs_travel_log_d>).
         <fs_travel_log_d>-changing_operation = 'DELETE'.
+        <fs_travel_log_d>-user_mod = cl_abap_context_info=>get_user_technical_name( ).
         " Generate time stamp
         GET TIME STAMP FIELD <fs_travel_log_d>-created_at.
         " Generate uuid as value of the change_id field
