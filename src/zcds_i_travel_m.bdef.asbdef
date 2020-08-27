@@ -1,0 +1,89 @@
+managed; // implementation in class zbp_cds_i_travel_m unique;
+
+define behavior for ZCDS_I_TRAVEL_M alias travel
+implementation in class zcl_bp_travel_m unique
+persistent table ztlog_travel_m     // manage guarda create, update, delete
+with additional save                // Llena tabla log.
+//lock dependent
+//lock master unmanaged
+lock master
+authorization master ( instance )  //Autorizaciones
+etag master last_changed_at  //evita actualizaciones automaticas en protocolo ODAta simultaneas
+{
+  // administrative fields: read only
+  field ( readonly ) last_changed_at, last_changed_by, created_at, created_by;
+  // mandatory fields that are required to create a travel
+  field ( mandatory ) agency_id, overall_status, booking_fee, currency_code;
+  // dynamic field control
+  field ( features : instance ) travel_id;
+
+  mapping for ztlog_travel_m corresponding; //mapeo de CDS a base de datos
+
+  create;
+  update;
+  delete;
+//  delete ( authorization : none );
+
+  //instacne actions
+  action ( features : instance ) acceptTravel result [1] $self; //depende datos instancia con un solo retorno
+  action ( features : instance ) rejectTravel result [1] $self;
+
+  //action ( authorization : none ) createBooking result [1] $self; // revisar
+
+  action createTravelByTemplate result [1] $self;  //copia viaje
+
+  //validations
+  validation validateCustomer on save { field customer_id; }
+  validation validateDates on save { field begin_date, end_date; }
+  validation validateStatus on save { field overall_status; }
+
+  association _Booking { create; }
+}
+
+
+define behavior for ZCDS_I_BOOK_M alias book
+implementation in class zcl_bp_booking_m unique
+persistent table ztlog_booking_m
+lock dependent ( travel_id = travel_id )     //obsoleta
+//lock dependent by _Travel
+// authorization dependent( travel_id = travel_id ) // Autorizacion
+etag master last_changed_at
+{
+  // static field control
+  field ( mandatory ) carrier_id, connection_id, flight_date, booking_status;
+  field ( readonly ) travel_id;
+  // dynamic field control
+  field ( features : instance ) booking_id, booking_date, booking_status;
+
+  mapping for ztlog_booking_m corresponding;
+  update;
+
+  //validations
+  validation validateStatus on save { field booking_status; }
+
+  determination calculateTotalFlightPrice on modify { field flight_price, currency_code; }
+
+  association _BookSupplement { create; }
+}
+
+
+define behavior for ZCDS_I_BOOKSUPPL_M alias booksupl
+implementation in class zcl_bp_bookingsupplement_m unique
+//persistent table <???>
+with unmanaged save
+lock dependent ( travel_id = travel_id )
+// authorization dependent( travel_id = travel_id ) // Autorizacion
+etag master last_changed_at
+{
+  //static field control
+  field ( mandatory ) supplement_id, price;
+  field ( readonly ) travel_id, booking_id;
+  //dynamic field control
+  field ( features : instance ) booking_supplement_id;
+
+  mapping for ztlog_bsuppl_m corresponding;
+
+  update;
+
+  determination calculateTotalSupplimPrice on modify { field price, currency_code; }
+}

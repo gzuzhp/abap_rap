@@ -1,0 +1,26 @@
+projection;
+
+define behavior for ZCDS_C_TRAVEL_M //alias <alias_name>
+{
+  use create;
+  use update;
+  use delete;
+
+  use action acceptTravel;
+  use action rejectTravel;
+  use action createTravelByTemplate;
+
+  use association _Booking { create; }
+}
+
+define behavior for ZCDS_C_BOOKING_M //alias <alias_name>
+{
+  use update;
+
+  use association _BookSupplement { create; }
+}
+
+define behavior for ZCDS_C_BOOKSUPPL_M //alias <alias_name>
+{
+  use update;
+}
